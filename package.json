@@ -1,0 +1,18 @@
+{
+  "name": "isometric-building",
+  "version": "1.0.0",
+  "description": "Build stuff in isometric with other people",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "Myeloon",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.16.3"
+  },
+  "jshintConfig": {
+    "esversion": 6
+  }
+}
