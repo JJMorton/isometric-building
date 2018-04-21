@@ -21,15 +21,25 @@ class Vector {
 		return this;
 	}
 
-	add(other) {
-		this.x += other.x;
-		this.y += other.y;
+	add(a, b) {
+		if (arguments.length === 1) {
+			this.x += a.x;
+			this.y += a.y;
+		} else {
+			this.x += a;
+			this.y += b;
+		}
 		return this;
 	}
 
-	sub(other) {
-		this.x -= other.x;
-		this.y -= other.y;
+	sub(a, b) {
+		if (arguments.length === 1) {
+			this.x -= a.x;
+			this.y -= a.y;
+		} else {
+			this.x -= a;
+			this.y -= b;
+		}
 		return this;
 	}
 

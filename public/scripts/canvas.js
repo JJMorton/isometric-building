@@ -20,7 +20,7 @@
 
 		// User options
 		options: {
-			editMode: false,
+			editMode: 0,
 			textureToUse: 1,
 			zoom: 1,
 			offset: new Vector()
@@ -38,19 +38,34 @@
 			{ name: "q"   , code: 81, pressed: false }
 		],
 		keybindings: [
-			{ code: 69, description: "Toggle edit mode", action: () => Canvas.options.editMode = !Canvas.options.editMode }
+			{ code: 78, description: "No tool", action: () => Canvas.options.editMode = 0 },
+			{ code: 66, description: "Build mode", action: () => Canvas.options.editMode = 1 },
+			{ code: 80, description: "Paint mode", action: () => Canvas.options.editMode = 2 }
 		],
 
 		// Game data
 		grid: [[]],
 		tileCount: 0,
 		textures: [
+			{ top: "#888888", front: "#666666", side: "#777777" }, // Blank
 			{ top: "#1166DD", front: "#0944AA", side: "#0F54BA" }, // Ocean
 			{ top: "#338800", front: "#115500", side: "#216500" }, // Grass
 			{ top: "#CECE8D", front: "#AEAE6D", side: "#BEBE7D" }  // Sand
 		]
 
 	};
+
+	// Add all the textures to the paints container
+	const container = document.getElementById("paints-container");
+	Canvas.textures.forEach((texture, i) => {
+		const paint = document.createElement("li");
+		paint.className = "paint disabled";
+		paint.setAttribute("style", `background-color: ${texture.top};`);
+		container.appendChild(paint);
+		paint.addEventListener("click", () => {
+			Canvas.options.textureToUse = i + 1;
+		});
+	});
 
 	const isOnTile = (point, tile, tileSize) => {
 
@@ -91,9 +106,6 @@
 
 
 		if (createNonexistent) {
-
-			const tileSize = Canvas.options.zoom * 100;
-
 
 			// Tile above
 
@@ -186,28 +198,24 @@
 		Canvas.grid[y][x] = 0;
 		Canvas.tileCount--;
 
+		// Remove any trailing empty spaces from the row
 		const removeTrailing = y => {
-
-			// Remove any trailing empty spaces from the row
 			while (Canvas.grid[y][Canvas.grid[y].length - 1] === -1) Canvas.grid[y].pop();
-			if (y === Canvas.grid.length - 1 && Canvas.grid[y].find(x => x !== -1) === undefined) {
-				Canvas.grid.pop();
-			}
-
 		};
 
+		// Returns true if the tile has at least one neighbour
 		const noNeighbours = (x, y) => {
 			const neighbours = getNeighbours(x, y, false);
 			const total = neighbours.reduce((sum, n) => {
 				if (!Canvas.grid[n.y] || !Canvas.grid[n.y][n.x]) return sum;
-				sum += Math.max(Canvas.grid[n.y][n.x], 0);
-				return sum;
+				return sum + Math.max(Canvas.grid[n.y][n.x], 0);
 			}, 0);
 
 			// If the total is 0, all the neighbour tiles are empty
 			return total === 0;
 		};
 
+		// If any of the neighbours now has no neighbours, remove them
 		getNeighbours(x, y, false).forEach(t => {
 			if (Canvas.grid.length <= t.y || Canvas.grid[t.y].length <= t.x || Canvas.grid[t.y][t.x] !== 0) return;
 			if (noNeighbours(t.x, t.y)) {
@@ -216,13 +224,23 @@
 			}
 		});
 
+		// If the tile has no neighbours, remove it
 		if (noNeighbours(x, y)) Canvas.grid[y][x] = -1;
 
+		// Remove empty tiles after deleted one
 		removeTrailing(y);
 
+		// Create a tile at (1, 1) if the grid is empty
 		if (Canvas.tileCount <= 0) {
 			Canvas.grid = [[]];
-			addTile(0, 0, 1);
+			addTile(1, 1, 1);
+		}
+
+		// Remove empty rows from start and end
+		while (Canvas.grid[Canvas.grid.length - 1].every(x => x === -1)) Canvas.grid.pop();
+		while (Canvas.grid[0].every(x => x === -1)) {
+			Canvas.grid.shift();
+			Canvas.options.offset.add(-1, 0.5);
 		}
 
 	};
@@ -288,7 +306,7 @@
 					// Top
 					let stroke = "#00000000";
 					let fill = Canvas.textures[row[x] - 1].top;
-					if (!Canvas.options.editMode) {
+					if (Canvas.options.editMode === 0) {
 						stroke = fill;
 					}
 					drawTop(ctx, position, tileSize, fill, stroke);
@@ -304,7 +322,7 @@
 						ctx.lineTo(position.x, position.y + tileSize / 2);
 						ctx.closePath();
 						ctx.fill();
-						if (!Canvas.options.editMode) ctx.stroke();
+						if (Canvas.options.editMode === 0) ctx.stroke();
 					}
 
 					// Side
@@ -318,33 +336,41 @@
 						ctx.lineTo(position.x, position.y + tileSize / 2);
 						ctx.closePath();
 						ctx.fill();
-						if (!Canvas.options.editMode) ctx.stroke();
+						if (Canvas.options.editMode === 0) ctx.stroke();
 					}
 				}
 
-				if (Canvas.options.editMode && mouseIsOn) {
+				if (Canvas.options.editMode > 0 && mouseIsOn && (Canvas.options.editMode !== 2 || row[x] > 0)) {
 					drawTop(ctx, position, tileSize, "#00000000", "#000000");
 
 					// Change the texture of the tile if q is pressed
-					if (changeTexture) {
+					if (changeTexture && row[x] > 0) {
 						Canvas.keys.find(k => k.name === "q").pressed = false;
 						row[x]++;
 						if (row[x] > Canvas.textures.length) row[x] = 1;
 						Canvas.options.textureToUse = row[x];
 					}
 
-				} else if (Canvas.options.editMode) {
+				} else if (Canvas.options.editMode > 0 && (Canvas.options.editMode !== 2 || row[x] > 0)) {
 					drawTop(ctx, position, tileSize, "#00000000", "#FFFFFF33");
 				}
 
-				if (Canvas.options.editMode) {
+				if (Canvas.options.editMode === 1) {
 
 					// Building actions
 
-					if (mouseIsOn && Canvas.mouse.right) {
+					if (mouseIsOn && Canvas.mouse.right && row[x] > 0) {
 						removeTile(x, y);
 					}
-					if (mouseIsOn && Canvas.mouse.left) {
+					if (mouseIsOn && Canvas.mouse.left && row[x] === 0) {
+						addTile(x, y, 1);
+					}
+
+				} else if (Canvas.options.editMode === 2) {
+
+					// Painting actions
+
+					if (mouseIsOn && Canvas.mouse.left && row[x] > 0) {
 						addTile(x, y, Canvas.options.textureToUse);
 					}
 
@@ -360,6 +386,25 @@
 	};
 
 	animate();
+
+
+	document.getElementById("tool-none").addEventListener("click", () => {
+		Canvas.options.editMode = 0;
+		document.getElementsByClassName("tool enabled")[0].className = "tool disabled";
+		document.getElementById("tool-none").className = "tool enabled";
+	});
+
+	document.getElementById("tool-build").addEventListener("click", () => {
+		Canvas.options.editMode = 1;
+		document.getElementsByClassName("tool enabled")[0].className = "tool disabled";
+		document.getElementById("tool-build").className = "tool enabled";
+	});
+
+	document.getElementById("tool-paint").addEventListener("click", () => {
+		Canvas.options.editMode = 2;
+		document.getElementsByClassName("tool enabled")[0].className = "tool disabled";
+		document.getElementById("tool-paint").className = "tool enabled";
+	});
 
 
 	// Keep mouse presses up to date

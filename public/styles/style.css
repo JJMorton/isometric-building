@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css?family=Karla');
+
 body, html {
 	margin: 0;
 	padding: 0;
@@ -13,9 +15,65 @@ canvas {
 
 #fps-counter {
 	position: fixed;
+	margin: 0;
 	color: #FFFFFF88;
-	font-size: 9;
+	font-size: 0.9em;
 	right: 10px;
-	bottom: 0px;
+	bottom: 10px;
 	font-family: monospace;
+}
+
+#tools-container,
+#paints-container {
+	position: fixed;
+	margin: 0;
+	padding: 2em;
+	left: 0px;
+	width: 7%;
+	background-color: none;
+}
+
+.tool,
+.paint {
+	list-style: none;
+	width: calc(100% - 2em - 2px);
+	height: 1.1em;
+	padding: 0.6em 1em 0.6em 1em;
+	border-radius: 2px;
+	border: 1px solid #FF0000;
+}
+
+#tools-container {
+	top: 0px;
+}
+
+.tool {
+	margin-bottom: 1em;
+	color: #212121;
+	background-color: #EEEEEE;
+	text-align: center;
+	font-size: 1.1em;
+	font-family: 'Karla', sans-serif;
+}
+
+.disabled {
+	background-color: #212121;
+	color: #EEEEEE;
+	border-color: #EEEEEE;
+	cursor: pointer;
+}
+
+.enabled {
+	background-color: #EEEEEE;
+	color: #212121;
+	border-color: #000000;
+	cursor: default;
+}
+
+#paints-container {
+	bottom: 0px;
+}
+
+.paint {
+	margin-top: 1em;
 }

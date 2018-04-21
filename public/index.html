@@ -7,7 +7,13 @@
 </head>
 <body>
 	<canvas></canvas>
-	<p id="fps-counter">displaying <span id="fps">0</span> fps (<span id="delta">0</span> ms)</p>
+	<ul id="tools-container">
+		<li class="tool enabled" id="tool-none">None</li>
+		<li class="tool disabled" id="tool-build">Build</li>
+		<li class="tool disabled" id="tool-paint">Paint</li>
+	</ul>
+	<ul id="paints-container"></ul>
+	<p id="fps-counter"><span id="fps">0</span>/60 fps (<span id="delta">0</span> ms / frame)</p>
 
 	<script src="scripts/Vector.js"></script>
 	<script src="scripts/canvas.js"></script>
