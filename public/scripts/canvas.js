@@ -172,7 +172,7 @@
 
 			// Change tile texture
 
-			if (row[x] > 0) row[x] = type;
+			if (Canvas.grid[y][x] > 0) Canvas.grid[y][x] = type;
 
 		}
 
