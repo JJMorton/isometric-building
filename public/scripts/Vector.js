@@ -73,12 +73,23 @@ class Vector {
 		return this;
 	}
 
+	mod(factor1, factor2) {
+		if (!factor2) factor2 = factor1;
+		this.x = this.x % factor1;
+		this.y = this.y % factor2;
+		return this;
+	}
+
 	distanceTo(other) {
 		return Vector.sub(other, this).mag;
 	}
 
 	distance2To(other) {
 		return Vector.sub(other, this).mag2;
+	}
+
+	clone() {
+		return new Vector(this.x, this.y);
 	}
 
 	static add(a, b) {
