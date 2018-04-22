@@ -36,11 +36,10 @@ canvas {
 .tool,
 .paint {
 	list-style: none;
-	width: calc(100% - 2em - 2px);
 	height: 1.1em;
 	padding: 0.6em 1em 0.6em 1em;
 	border-radius: 2px;
-	border: 1px solid #FF0000;
+	border: 1px solid #EEEEEE;
 }
 
 #tools-container {
@@ -48,22 +47,29 @@ canvas {
 }
 
 .tool {
+	width: calc(100% - 2em - 2px);
 	margin-bottom: 1em;
 	color: #212121;
 	background-color: #EEEEEE;
 	text-align: center;
 	font-size: 1.1em;
 	font-family: 'Karla', sans-serif;
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
 }
 
-.disabled {
+.tool.disabled {
 	background-color: #212121;
 	color: #EEEEEE;
 	border-color: #EEEEEE;
 	cursor: pointer;
 }
 
-.enabled {
+.tool.enabled {
 	background-color: #EEEEEE;
 	color: #212121;
 	border-color: #000000;
@@ -72,8 +78,83 @@ canvas {
 
 #paints-container {
 	bottom: 0px;
+	display: none;
 }
 
 .paint {
+	width: 10%;
 	margin-top: 1em;
+}
+
+.paint.enabled {
+	width: 60%;
+}
+
+.paint.disabled {
+	cursor: pointer;
+}
+
+#show-help {
+	position: fixed;
+	top: 2em;
+	right: 2em;
+	width: 2em;
+	height: 2em;
+	background-color: #EEEEEE;
+	cursor: pointer;
+	border-radius: 2px;
+	opacity: 0.2;
+}
+
+#show-help:hover {
+	opacity: 1;
+}
+
+#show-help p {
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	height: 100%;
+	font-size: 1em;
+	color: #212121;
+	font-family: 'Karla', sans-serif;
+	text-align: center;
+	line-height: 2em;
+}
+
+#help-background {
+	display: none;
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background-color: #00000088;
+	cursor: pointer;
+}
+
+#help-container {
+	display: none;
+	position: fixed;
+	top: 25%;
+	left: 25%;
+	width: calc(50% - 2em);
+	height: calc(50% - 2em);
+	background-color: #EEEEEE;
+	color: #212121;
+	border-radius: 2px;
+	padding: 1em;
+	font-family: 'Karla', sans-serif;
+	overflow-y: auto;
+}
+
+.help-header {
+	margin: 0.5em 0.5em 0 0.5em;
+	padding: 0 0 0.2em 0;
+	width: calc(100% - 1em);
+	border-bottom: 1px dashed #212121;
+}
+
+.help-list {
+	list-style: none;
 }

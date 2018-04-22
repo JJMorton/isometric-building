@@ -1,21 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 	<meta charset="UTF-8">
 	<title>Isometric</title>
 	<link rel="stylesheet" type="text/css" href="styles/style.css">
+	<script src="scripts/jquery/jquery-3.3.1.min.js"></script>
 </head>
+
 <body>
 	<canvas></canvas>
+
 	<ul id="tools-container">
-		<li class="tool enabled" id="tool-none">None</li>
+		<li class="tool disabled" id="tool-none">None</li>
 		<li class="tool disabled" id="tool-build">Build</li>
 		<li class="tool disabled" id="tool-paint">Paint</li>
 	</ul>
+
 	<ul id="paints-container"></ul>
-	<p id="fps-counter"><span id="fps">0</span>/60 fps (<span id="delta">0</span> ms / frame)</p>
+
+	<div id="show-help"><p>?</p></div>
+
+	<p id="fps-counter"><span id="fps">0</span> fps (<span id="delta">0</span> ms / frame)</p>
+
+	<div id="help-background"></div>
+	<div id="help-container">
+		<h1 class="help-header">Controls</h1>
+		<ul class="help-list">
+			<li class="help-item"><strong>click / drag</strong> while in build mode to create tiles</li>
+			<li class="help-item"><strong>click / drag</strong> while in paint mode to colour tiles</li>
+			<li class="help-item"><strong>w, a, s, d</strong> to move the camera</li>
+			<li class="help-item"><strong>scroll</strong> to zoom in / out</li>
+			<li class="help-item"><strong>q</strong> to quickly change the paint colour of a tile</li>
+		</ul>
+		<h1 class="help-header">About</h1>
+		<ul class="help-list">
+			<li class="help-item"><strong>Source</strong> on <a href="https://github.com/Myeloon/isometric-building">Github</a> and <a href="https://glitch.com/edit/#!/isometric-building?path=README.md:1:20">Glitch</a></li>
+			<li class="help-item"><strong>Hosted</strong> with <a href="https://glitch.com/">Glitch</a></li>
+		</ul>
+	</div>
 
 	<script src="scripts/Vector.js"></script>
 	<script src="scripts/canvas.js"></script>
 </body>
+
 </html>

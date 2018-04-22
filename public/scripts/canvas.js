@@ -2,10 +2,17 @@
 
 	'use strict';
 
+	// Set up canvas element and rendering context
 	const canvas = document.querySelector('canvas');
 	canvas.width = window.innerWidth;
 	canvas.height = window.innerHeight;
 	const ctx = canvas.getContext('2d');
+
+
+
+	// ################################################################################
+	// #                          USER VARIABLES + GAME DATA                          #
+	// ################################################################################
 
 
 	window.Canvas = {
@@ -15,13 +22,14 @@
 		// Performance measurement
 		delta: 0,
 		prevTime: Date.now(),
+		frameCount: 0,
 		deltaElt: document.getElementById('delta'),
 		fpsElt: document.getElementById('fps'),
 
 		// User options
 		options: {
 			editMode: 0,
-			textureToUse: 1,
+			textureToUse: 2,
 			zoom: 1,
 			offset: new Vector()
 		},
@@ -37,45 +45,39 @@
 			{ name: "d"   , code: 68, pressed: false },
 			{ name: "q"   , code: 81, pressed: false }
 		],
-		keybindings: [
-			{ code: 78, description: "No tool", action: () => Canvas.options.editMode = 0 },
-			{ code: 66, description: "Build mode", action: () => Canvas.options.editMode = 1 },
-			{ code: 80, description: "Paint mode", action: () => Canvas.options.editMode = 2 }
-		],
 
 		// Game data
 		grid: [[]],
 		tileCount: 0,
 		textures: [
-			{ top: "#888888", front: "#666666", side: "#777777" }, // Blank
-			{ top: "#1166DD", front: "#0944AA", side: "#0F54BA" }, // Ocean
-			{ top: "#338800", front: "#115500", side: "#216500" }, // Grass
-			{ top: "#CECE8D", front: "#AEAE6D", side: "#BEBE7D" }  // Sand
+			{ top: "#888888", front: "#666666", side: "#777777" }, // Grey
+			{ top: "#1166DD", front: "#0944AA", side: "#0F54BA" }, // Blue
+			{ top: "#5522AA", front: "#330088", side: "#441199" }, // Purple
+			{ top: "#991111", front: "#770000", side: "#880505" }, // Red
+			{ top: "#BBBB00", front: "#999900", side: "#AAAA00" }, // Yellow
+			{ top: "#338800", front: "#115500", side: "#216500" }, // Green
+			{ top: "#11AAAA", front: "#008888", side: "#059999" }  // Turquoise
 		]
 
 	};
 
-	// Add all the textures to the paints container
-	const container = document.getElementById("paints-container");
-	Canvas.textures.forEach((texture, i) => {
-		const paint = document.createElement("li");
-		paint.className = "paint disabled";
-		paint.setAttribute("style", `background-color: ${texture.top};`);
-		container.appendChild(paint);
-		paint.addEventListener("click", () => {
-			Canvas.options.textureToUse = i + 1;
-		});
-	});
 
-	const isOnTile = (point, tile, tileSize) => {
+
+	// ################################################################################
+	// #                        TILE RENDERING + CALCULATIONS                         #
+	// ################################################################################
+
+
+	const isOnTile = (p, tile, tileSize) => {
 
 		// Centre tile at (0, 0)
-		point.sub(tile);
+		const point = Vector.sub(p, tile);
 
 		// Gradients of sides
 		const southEast = ( tileSize / 2) / tileSize;
 		const northEast = (-tileSize / 2) / tileSize;
 
+		// Check each side with simple straight line equations
 		const topLeft     = point.y >= northEast * point.x - tileSize / 2;
 		const topRight    = point.y >= southEast * point.x - tileSize / 2;
 		const bottomLeft  = point.y <= southEast * point.x + tileSize / 2;
@@ -87,6 +89,7 @@
 
 	const drawTop = (c, position, tileSize, fill, stroke) => {
 
+		// Draw the top of a tile
 		c.fillStyle = fill;
 		c.strokeStyle = stroke;
 		c.beginPath();
@@ -102,8 +105,9 @@
 
 	const getNeighbours = (x, y, createNonexistent = false) => {
 
-		const neighbours = [];
+		// Returns coordinates of all four neighbours and can create neighbours if they don't exist
 
+		const neighbours = [];
 
 		if (createNonexistent) {
 
@@ -163,6 +167,8 @@
 
 	const addTile = (x, y, type) => {
 
+		// Adds a tile to the grid and updates neighbour states
+
 		// Can't add tile if it's already there
 		if (Canvas.grid[y][x] === type) return;
 
@@ -191,6 +197,8 @@
 	};
 
 	const removeTile = (x, y) => {
+
+		// Removes a tile from the grid and updates neighbour states
 
 		// Can't remove an empty tile
 		if (Canvas.grid[y][x] <= 0) return;
@@ -245,7 +253,15 @@
 
 	};
 
+	// Add the first tile
 	addTile(0, 0, 1);
+
+
+
+	// ################################################################################
+	// #                                ANIMATION LOOP                                #
+	// ################################################################################
+
 
 	const animate = () => {
 
@@ -261,6 +277,8 @@
 		const screenSize = Math.min(canvas.width, canvas.height);
 		// Size of each cell from top to bottom (double the width)
 		const tileSize = Canvas.options.zoom * 100;
+		// Height of tiles
+		const height = tileSize * 0.5;
 
 		// Zoom controls
 		if (Canvas.keys.find(k => k.name === "up").pressed) {
@@ -284,11 +302,15 @@
 			Canvas.options.offset.x -= 0.02 * screenSize / tileSize;
 		}
 
-		// Texture changing key
+		// Texture changing key state
 		const changeTexture = Canvas.keys.find(k => k.name === "q").pressed;
 
+		// Background
 		ctx.fillStyle = Canvas.bgColor;
 		ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+		// Store position of selected tile
+		let selected;
 
 		Canvas.grid.forEach((row, y) => {
 			row.forEach((_, x) => {
@@ -297,13 +319,13 @@
 
 				const position = Vector.toIsometric(x * tileSize, y * tileSize);
 				position.set(0.5 * canvas.width + position.x + Canvas.options.offset.x * tileSize, 0.5 * canvas.height + position.y + Canvas.options.offset.y * tileSize);
-				const mouseIsOn = isOnTile(Canvas.mouse.position.clone(), position.clone(), tileSize);
-				const height = tileSize * 0.1;
+				const mouseIsOn = isOnTile(Canvas.mouse.position, position, tileSize);
+				if (mouseIsOn) selected = new Vector(x, y);
 
 				// Only draw tiles that are visible
 				if (!(row[x] === 0 || position.x < -tileSize || position.x > canvas.width + tileSize || position.y < -tileSize - height || position.y > canvas.height + tileSize/2)) {
 
-					// Top
+					// Render top
 					let stroke = "#00000000";
 					let fill = Canvas.textures[row[x] - 1].top;
 					if (Canvas.options.editMode === 0) {
@@ -311,75 +333,84 @@
 					}
 					drawTop(ctx, position, tileSize, fill, stroke);
 
-					// Front
+					// Render front
 					if (y === Canvas.grid.length - 1 || x >= Canvas.grid[y + 1].length || Canvas.grid[y + 1][x] <= 0) {
 						ctx.fillStyle = Canvas.textures[row[x] - 1].front;
 						ctx.strokeStyle = ctx.fillStyle;
 						ctx.beginPath();
 						ctx.moveTo(position.x - tileSize, position.y);
-						ctx.lineTo(position.x - tileSize, position.y + tileSize * 0.5 + height);
-						ctx.lineTo(position.x, position.y + tileSize + height);
-						ctx.lineTo(position.x, position.y + tileSize / 2);
+						ctx.lineTo(position.x - tileSize, position.y + height);
+						ctx.lineTo(position.x, position.y + tileSize * 0.5 + height);
+						ctx.lineTo(position.x, position.y + tileSize * 0.5);
 						ctx.closePath();
 						ctx.fill();
 						if (Canvas.options.editMode === 0) ctx.stroke();
 					}
 
-					// Side
+					// Render side
 					if (x === row.length - 1 || row[x + 1] <= 0) {
 						ctx.fillStyle = Canvas.textures[row[x] - 1].side;
 						ctx.strokeStyle = ctx.fillStyle;
 						ctx.beginPath();
 						ctx.moveTo(position.x + tileSize, position.y);
-						ctx.lineTo(position.x + tileSize, position.y + tileSize * 0.5 + height);
-						ctx.lineTo(position.x, position.y + tileSize + height);
-						ctx.lineTo(position.x, position.y + tileSize / 2);
+						ctx.lineTo(position.x + tileSize, position.y + height);
+						ctx.lineTo(position.x, position.y + tileSize * 0.5 + height);
+						ctx.lineTo(position.x, position.y + tileSize * 0.5);
 						ctx.closePath();
 						ctx.fill();
 						if (Canvas.options.editMode === 0) ctx.stroke();
 					}
 				}
 
+				// If editing, draw grid lines around tiles
 				if (Canvas.options.editMode > 0 && mouseIsOn && (Canvas.options.editMode !== 2 || row[x] > 0)) {
-					drawTop(ctx, position, tileSize, "#00000000", "#000000");
+					// Overlay on currently selected tile
+					let fill = Math.floor(Math.sin(Math.PI * Canvas.frameCount / 30) * 125 + 125).toString(16);
+					if (fill.length === 1) fill = "0" + fill;
+					let stroke = Math.floor(Math.cos(Math.PI * Canvas.frameCount / 30) * 125 + 125).toString(16);
+					if (stroke.length === 1) stroke = "0" + stroke;
+					drawTop(ctx, position, tileSize, "#" + fill + fill + fill + "66", "#" + stroke + stroke + stroke);
 
 					// Change the texture of the tile if q is pressed
 					if (changeTexture && row[x] > 0) {
 						Canvas.keys.find(k => k.name === "q").pressed = false;
 						row[x]++;
 						if (row[x] > Canvas.textures.length) row[x] = 1;
-						Canvas.options.textureToUse = row[x];
 					}
 
 				} else if (Canvas.options.editMode > 0 && (Canvas.options.editMode !== 2 || row[x] > 0)) {
-					drawTop(ctx, position, tileSize, "#00000000", "#FFFFFF33");
-				}
-
-				if (Canvas.options.editMode === 1) {
-
-					// Building actions
-
-					if (mouseIsOn && Canvas.mouse.right && row[x] > 0) {
-						removeTile(x, y);
-					}
-					if (mouseIsOn && Canvas.mouse.left && row[x] === 0) {
-						addTile(x, y, 1);
-					}
-
-				} else if (Canvas.options.editMode === 2) {
-
-					// Painting actions
-
-					if (mouseIsOn && Canvas.mouse.left && row[x] > 0) {
-						addTile(x, y, Canvas.options.textureToUse);
-					}
-
+					// White outline around all other tiles
+					drawTop(ctx, position, tileSize, "#00000000", "#FFFFFF66");
 				}
 
 			});
 		});
 
+		if (selected) {
+			if (Canvas.options.editMode === 1) {
+
+				// Building actions
+
+				if (Canvas.mouse.right && Canvas.grid[selected.y][selected.x] > 0) {
+					removeTile(selected.x, selected.y);
+				}
+				if (Canvas.mouse.left && Canvas.grid[selected.y][selected.x] === 0) {
+					addTile(selected.x, selected.y, 1);
+				}
+
+			} else if (Canvas.options.editMode === 2) {
+
+				// Painting actions
+
+				if (Canvas.mouse.left && Canvas.grid[selected.y][selected.x] > 0) {
+					addTile(selected.x, selected.y, Canvas.options.textureToUse);
+				}
+
+			}
+		}
+
 		Canvas.deltaElt.innerHTML = Date.now() - currentTime;
+		Canvas.frameCount++;
 
 		requestAnimationFrame(animate);
 
@@ -388,64 +419,88 @@
 	animate();
 
 
-	document.getElementById("tool-none").addEventListener("click", () => {
-		Canvas.options.editMode = 0;
-		document.getElementsByClassName("tool enabled")[0].className = "tool disabled";
-		document.getElementById("tool-none").className = "tool enabled";
+
+	// ################################################################################
+	// #                       EVENT LISTENERS / DOM MANAGEMENT                       #
+	// ################################################################################
+
+
+	// Add all the textures to the paints container
+	const container = document.getElementById("paints-container");
+	Canvas.textures.forEach((texture, i) => {
+		const paint = document.createElement("li");
+		if (Canvas.options.textureToUse === i + 1) {
+			paint.className = "paint enabled";
+		} else {
+			paint.className = "paint disabled";
+		}
+		paint.setAttribute("style", `background-color: ${texture.top};`);
+		container.appendChild(paint);
+		paint.addEventListener("click", () => {
+			Canvas.options.textureToUse = i + 1;
+			const previous = document.getElementsByClassName("paint enabled")[0];
+			if (previous === paint) return;
+			$(previous).animate({width: "10%"}, 200);
+			$(paint).animate({width: "60%"}, 200);
+			previous.className = "paint disabled";
+			paint.className = "paint enabled";
+		});
 	});
 
-	document.getElementById("tool-build").addEventListener("click", () => {
-		Canvas.options.editMode = 1;
-		document.getElementsByClassName("tool enabled")[0].className = "tool disabled";
-		document.getElementById("tool-build").className = "tool enabled";
+	// Open / close help and about
+	document.getElementById("show-help").addEventListener("click", () => {
+		$("#help-background").fadeIn(200);
+		$("#help-container").slideDown(200);
+	});
+	document.getElementById("help-background").addEventListener("click", () => {
+		$("#help-background").fadeOut(200);
+		$("#help-container").slideUp(200);
 	});
 
-	document.getElementById("tool-paint").addEventListener("click", () => {
-		Canvas.options.editMode = 2;
-		document.getElementsByClassName("tool enabled")[0].className = "tool disabled";
-		document.getElementById("tool-paint").className = "tool enabled";
-	});
+	// Define actions of tool buttons
+	const tools = document.getElementsByClassName("tool");
+	for (let i = 0; i < tools.length; i++) {
+		tools[i].addEventListener("click", () => {
+			Canvas.options.editMode = i;
+			document.getElementsByClassName("tool enabled")[0].className = "tool disabled";
+			tools[i].className = "tool enabled";
+			if (tools[i].id === "tool-paint") {
+				$("#paints-container").slideDown(50 * Canvas.textures.length);
+			} else {
+				$("#paints-container").slideUp(50 * Canvas.textures.length);
+			}
+		});
+	}
+	tools[Canvas.options.editMode].className = "tool enabled";
 
 
 	// Keep mouse presses up to date
-	// ----------------------------------------------------
-
 	window.addEventListener('mousedown', e => {
-
 		if (e.button === 0) {
 			Canvas.mouse.left = true;
 		} else if (e.button === 2) {
 			Canvas.mouse.right = true;
 		}
-
 	});
 	window.addEventListener('mouseup', e => {
-
 		if (e.button === 0) {
 			Canvas.mouse.left = false;
 		} else if (e.button === 2) {
 			Canvas.mouse.right = false;
 		}
-
 	});
 
-	// ----------------------------------------------------
-
-
+	// Disallow right click context menu
 	window.addEventListener('contextmenu', e => {
-
-		// Disallow right click context menu
 		e.preventDefault();
-
 	});
 
+	// Keep mouse position up to date
 	window.addEventListener('mousemove', e => {
-
-		// Keep mouse position up to date
 		Canvas.mouse.position.set(e.pageX, e.pageY);
-
 	});
 
+	// Zoom using mouse wheel
 	window.addEventListener('wheel', e => {
 
 		if (e.ctrlKey) e.preventDefault();
@@ -462,44 +517,22 @@
 
 	});
 
-	window.addEventListener('keypress', e => {
-
-		// Listen for keys that require only a single press
-		const code = String.fromCharCode(e.keyCode).toUpperCase().charCodeAt();
-		const keybinding = Canvas.keybindings.find(k => k.code === code);
-		if (keybinding) {
-			console.log(keybinding.description);
-			keybinding.action();
-		}
-
-	});
-
 
 	// keyup and keydown update states of keys that need to be held
-	// ----------------------------------------------------
-
 	window.addEventListener('keyup', e => {
-
 		const keybinding = Canvas.keys.find(k => k.code === e.keyCode);
 		if (keybinding) keybinding.pressed = false;
-
 	});
 	window.addEventListener('keydown', e => {
-
 		const keybinding = Canvas.keys.find(k => k.code === e.keyCode);
 		if (keybinding) keybinding.pressed = true;
-
 	});
-
-	// ----------------------------------------------------
 
 
 	window.addEventListener('resize', () => {
-
 		canvas.width = window.innerWidth;
 		canvas.height = window.innerHeight;
 		ctx.fillStyle = Canvas.bgColor;
-
 	});
 
 }());
