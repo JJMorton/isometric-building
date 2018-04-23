@@ -230,8 +230,8 @@
 
 		// Removes a tile from the grid and updates neighbour states
 
-		// Can't remove an empty tile
-		if (Canvas.grid[y][x].type < 1) return;
+		// Can't remove an empty tile or the last one
+		if (Canvas.grid[y][x].type < 1 || Canvas.tileCount === 1) return;
 
 		Canvas.grid[y][x].type = 0;
 		Canvas.unrendered = true;
@@ -268,12 +268,6 @@
 
 		// Remove empty tiles after deleted one
 		removeTrailing(y);
-
-		// Create a tile at (1, 1) if the grid is empty
-		if (Canvas.tileCount <= 0) {
-			Canvas.grid = [[]];
-			addTile(1, 1, 1);
-		}
 
 		// Remove empty rows from start and end
 		while (Canvas.grid[Canvas.grid.length - 1].every(x => x.type === -1)) Canvas.grid.pop();
