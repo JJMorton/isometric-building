@@ -19,6 +19,14 @@
 	buffer.height = canvas.height;
 	const bufferCtx = buffer.getContext('2d');
 
+	/*
+		Canvas to draw editing grid to
+	*/
+	const editGrid = document.createElement('canvas');
+	editGrid.width = canvas.width;
+	editGrid.height = canvas.height;
+	const editGridCtx = editGrid.getContext('2d');
+
 
 
 	/*
@@ -41,6 +49,7 @@
 		options: {
 			editMode: 0,
 			textureToUse: 2,
+			heightToUse: 0.5,
 			zoom: 1,
 			offset: new Vector()
 		},
@@ -48,13 +57,15 @@
 		// Input tracking
 		mouse: {position: new Vector(), left: false, right: false},
 		keys: [
-			{ name: "up"  , code: 38, pressed: false },
-			{ name: "down", code: 40, pressed: false },
-			{ name: "w"   , code: 87, pressed: false },
-			{ name: "a"   , code: 65, pressed: false },
-			{ name: "s"   , code: 83, pressed: false },
-			{ name: "d"   , code: 68, pressed: false },
-			{ name: "q"   , code: 81, pressed: false }
+			{ name: "up"  ,  code: 38, pressed: false },
+			{ name: "down",  code: 40, pressed: false },
+			{ name: "left",  code: 37, pressed: false },
+			{ name: "right", code: 39, pressed: false },
+			{ name: "w"   ,  code: 87, pressed: false },
+			{ name: "a"   ,  code: 65, pressed: false },
+			{ name: "s"   ,  code: 83, pressed: false },
+			{ name: "d"   ,  code: 68, pressed: false },
+			{ name: "q"   ,  code: 81, pressed: false }
 		],
 
 		// Game data
@@ -80,7 +91,7 @@
 	*/
 
 
-	const isOnTile = (p, tile, tileSize) => {
+	const isOnTile = (p, tile, tileSize, height) => {
 
 		// Centre tile at (0, 0)
 		const point = Vector.sub(p, tile);
@@ -90,25 +101,41 @@
 		const northEast = (-tileSize / 2) / tileSize;
 
 		// Check each side with simple straight line equations
-		const topLeft     = point.y >= northEast * point.x - tileSize / 2;
-		const topRight    = point.y >= southEast * point.x - tileSize / 2;
-		const bottomLeft  = point.y <= southEast * point.x + tileSize / 2;
-		const bottomRight = point.y <= northEast * point.x + tileSize / 2;
+		// Top face
+		const top =
+			point.y > northEast * point.x - tileSize / 2 - height * tileSize && // Back left
+			point.y > southEast * point.x - tileSize / 2 - height * tileSize && // Back right
+			point.y < southEast * point.x + tileSize / 2 - height * tileSize && // Front left
+			point.y < northEast * point.x + tileSize / 2 - height * tileSize;   // Front right
 
-		return topLeft && topRight && bottomLeft && bottomRight;
+		// Front face
+		const front =
+			point.x > - tileSize &&                                             // Left
+			point.x < 0 &&                                                      // Right
+			point.y > southEast * point.x + tileSize / 2 - height * tileSize && // Top
+			point.y < southEast * point.x + tileSize / 2;                       // Bottom
+
+		// Right face
+		const right =
+			point.x > 0 &&                                                      // Left
+			point.x < tileSize &&                                               // Right
+			point.y > northEast * point.x + tileSize / 2 - height * tileSize && // Top
+			point.y < northEast * point.x + tileSize / 2;                       // Bottom
+
+		return top || front || right;
 
 	};
 
-	const drawTop = (c, position, tileSize, fill, stroke) => {
+	const drawTop = (c, position, tileSize, height, fill, stroke) => {
 
 		// Draw the top of a tile
 		c.fillStyle = fill;
 		c.strokeStyle = stroke;
 		c.beginPath();
-		c.moveTo(position.x - tileSize, position.y);
-		c.lineTo(position.x, position.y - tileSize / 2);
-		c.lineTo(position.x + tileSize, position.y);
-		c.lineTo(position.x, position.y + tileSize / 2);
+		c.moveTo(position.x - tileSize, position.y - height * tileSize);
+		c.lineTo(position.x, position.y - tileSize / 2 - height * tileSize);
+		c.lineTo(position.x + tileSize, position.y - height * tileSize);
+		c.lineTo(position.x, position.y + tileSize / 2 - height * tileSize);
 		c.closePath();
 		c.fill();
 		c.stroke();
@@ -127,7 +154,7 @@
 
 			// If on the first row, create new row above
 			if (y === 0) {
-				Canvas.grid.splice(0, 0, [{type: -1}]);
+				Canvas.grid.splice(0, 0, [{type: -1, height: 0.5}]);
 				Canvas.unrendered = true;
 				// The original tile will now have a larger y coordinate
 				y++;
@@ -136,7 +163,7 @@
 			}
 			// Fill all tiles up to the neighbour
 			while (Canvas.grid[y - 1].length <= x) {
-				Canvas.grid[y - 1].push({type: -1});
+				Canvas.grid[y - 1].push({type: -1, height: 0.5});
 				Canvas.unrendered = true;
 			}
 
@@ -145,7 +172,7 @@
 
 			// If on the end of the row, create tile to the right
 			if (x === Canvas.grid[y].length - 1) {
-				Canvas.grid[y].push({type: -1});
+				Canvas.grid[y].push({type: -1, height: 0.5});
 				Canvas.unrendered = true;
 			}
 
@@ -154,12 +181,12 @@
 
 			// If on the last row, create new row below
 			if (y === Canvas.grid.length - 1) {
-				Canvas.grid.push([{type: -1}]);
+				Canvas.grid.push([{type: -1, height: 0.5}]);
 				Canvas.unrendered = true;
 			}
 			// Fill all tiles up to the neighbour
 			while (Canvas.grid[y + 1].length <= x) {
-				Canvas.grid[y + 1].push({type: -1});
+				Canvas.grid[y + 1].push({type: -1, height: 0.5});
 				Canvas.unrendered = true;
 			}
 
@@ -168,7 +195,7 @@
 
 			// If at the beginning of a row, create column to the left
 			if (x === 0) {
-				Canvas.grid.forEach(row => row.splice(0, 0, {type: -1}));
+				Canvas.grid.forEach(row => row.splice(0, 0, {type: -1, height: 0.5}));
 				Canvas.unrendered = true;
 				// The original tile will have a larger x coordinate
 				x++;
@@ -200,10 +227,11 @@
 
 			// Add new tile
 
-			while (Canvas.grid.length <= y) Canvas.grid.push([{type: -1}]);
-			while (Canvas.grid[y].length <= x) Canvas.grid[y].push({type: -1});
+			while (Canvas.grid.length <= y) Canvas.grid.push([{type: -1, height: 0.5}]);
+			while (Canvas.grid[y].length <= x) Canvas.grid[y].push({type: -1, height: Math.random()});
 
 			Canvas.grid[y][x].type = type;
+			Canvas.grid[y][x].height = Canvas.options.heightToUse;
 			Canvas.tileCount++;
 
 			getNeighbours(x, y, true).forEach(t => {
@@ -302,8 +330,6 @@
 		const screenSize = Math.min(canvas.width, canvas.height);
 		// Size of each cell from top to bottom (double the width)
 		const tileSize = Canvas.options.zoom * 100;
-		// Height of tiles
-		const height = tileSize * 0.5;
 
 		// Move controls
 		if (Canvas.keys.find(k => k.name === "w").pressed) {
@@ -334,8 +360,8 @@
 		let selected;
 
 		if (Canvas.unrendered) {
-			bufferCtx.fillStyle = Canvas.bgColor;
-			bufferCtx.fillRect(0, 0, buffer.width, buffer.height);
+			bufferCtx.clearRect(0, 0, buffer.width, buffer.height);
+			editGridCtx.clearRect(0, 0, editGrid.width, editGrid.height);
 		}
 
 		Canvas.grid.forEach((row, y) => {
@@ -348,19 +374,22 @@
 				position.set(0.5 * canvas.width + position.x + Canvas.options.offset.x * tileSize, 0.5 * canvas.height + position.y + Canvas.options.offset.y * tileSize);
 
 				// Calculate if the user has selected the tile
-				const mouseIsOn = isOnTile(Canvas.mouse.position, position, tileSize);
+				const mouseIsOn = isOnTile(Canvas.mouse.position, position, tileSize, row[x].type > 0 ? row[x].height : 0);
 				if (mouseIsOn) selected = {index: new Vector(x, y), position: position};
 
 				// Only draw tiles that are visible
 				if (Canvas.unrendered || row[x].unrendered) {
 
-					row[x].unrendered = false;
+					if (Canvas.options.editMode > 0 && (Canvas.options.editMode !== 2 || row[x].type > 0)) {
+						// White outline around tiles if editing
+						drawTop(editGridCtx, position, tileSize, row[x].type > 0 ? row[x].height : 0, "#00000000", row[x].type > 0 ? "#000000" : "#FFFFFF33");
+					}
 
 					if (!(row[x].type === 0 ||
 						position.x < -tileSize ||
 						position.x > canvas.width + tileSize ||
-						position.y < -tileSize - height ||
-						position.y > canvas.height + tileSize/2)) {
+						position.y < -tileSize ||
+						position.y > canvas.height + tileSize/2 + row[x].height * tileSize)) {
 
 						// Render top
 						let stroke = "#00000000";
@@ -368,42 +397,36 @@
 						if (Canvas.options.editMode === 0) {
 							stroke = fill;
 						}
-						drawTop(bufferCtx, position, tileSize, fill, stroke);
+						drawTop(bufferCtx, position, tileSize, row[x].height, fill, stroke);
 
 						// Render front
-						if (y === Canvas.grid.length - 1 || x >= Canvas.grid[y + 1].length || Canvas.grid[y + 1][x].type <= 0) {
+						if (y === Canvas.grid.length - 1 || x >= Canvas.grid[y + 1].length || Canvas.grid[y + 1][x].type < 1 || row[x].height > Canvas.grid[y + 1][x].height) {
 							bufferCtx.fillStyle = Canvas.textures[row[x].type - 1].front;
 							bufferCtx.strokeStyle = bufferCtx.fillStyle;
 							bufferCtx.beginPath();
-							bufferCtx.moveTo(position.x - tileSize, position.y);
-							bufferCtx.lineTo(position.x - tileSize, position.y + height);
-							bufferCtx.lineTo(position.x, position.y + tileSize * 0.5 + height);
-							bufferCtx.lineTo(position.x, position.y + tileSize * 0.5);
+							bufferCtx.moveTo(position.x - tileSize, position.y - row[x].height * tileSize); // Top left
+							bufferCtx.lineTo(position.x - tileSize, position.y); // Bottom left
+							bufferCtx.lineTo(position.x, position.y + tileSize * 0.5); // Bottom middle
+							bufferCtx.lineTo(position.x, position.y + tileSize * 0.5 - row[x].height * tileSize); // Top middle
 							bufferCtx.closePath();
 							bufferCtx.fill();
 							if (Canvas.options.editMode === 0) bufferCtx.stroke();
 						}
 
 						// Render side
-						if (x === row.length - 1 || row[x + 1].type <= 0) {
+						if (x === row.length - 1 || row[x + 1].type <= 0 || row[x + 1].height < row[x].height) {
 							bufferCtx.fillStyle = Canvas.textures[row[x].type - 1].side;
 							bufferCtx.strokeStyle = bufferCtx.fillStyle;
 							bufferCtx.beginPath();
-							bufferCtx.moveTo(position.x + tileSize, position.y);
-							bufferCtx.lineTo(position.x + tileSize, position.y + height);
-							bufferCtx.lineTo(position.x, position.y + tileSize * 0.5 + height);
+							bufferCtx.moveTo(position.x + tileSize, position.y - row[x].height * tileSize);
+							bufferCtx.lineTo(position.x + tileSize, position.y);
 							bufferCtx.lineTo(position.x, position.y + tileSize * 0.5);
+							bufferCtx.lineTo(position.x, position.y + tileSize * 0.5 - row[x].height * tileSize);
 							bufferCtx.closePath();
 							bufferCtx.fill();
 							if (Canvas.options.editMode === 0) bufferCtx.stroke();
 						}
 
-					}
-
-					// If editing, draw grid lines around tiles
-					if (Canvas.options.editMode > 0 && (Canvas.options.editMode !== 2 || row[x].type > 0)) {
-						// White outline around all other tiles
-						drawTop(bufferCtx, position, tileSize, "#00000000", "#FFFFFF66");
 					}
 
 				}
@@ -413,9 +436,6 @@
 
 		// Mark canvas as rendered
 		Canvas.unrendered = false;
-
-		// Draw buffer to canvas
-		ctx.drawImage(buffer, 0, 0);
 
 		if (selected) {
 
@@ -427,12 +447,13 @@
 				if (fill.length === 1) fill = "0" + fill;
 				let stroke = Math.floor(Math.cos(Math.PI * Canvas.frameCount / 30) * 125 + 125).toString(16);
 				if (stroke.length === 1) stroke = "0" + stroke;
-				drawTop(ctx, selected.position, tileSize, "#" + fill + fill + fill + "66", "#" + stroke + stroke + stroke);
+				drawTop(ctx, selected.position, tileSize, selectedTile.type > 0 ? selectedTile.height : 0, "#" + fill + fill + fill + "66", "#" + stroke + stroke + stroke);
 
 				// Change the texture of the tile if q is pressed
 				if (changeTexture && selectedTile.type > 0) {
 					Canvas.keys.find(k => k.name === "q").pressed = false;
 					selectedTile.type++;
+					Canvas.unrendered = true;
 					if (selectedTile.type > Canvas.textures.length) selectedTile.type = 1;
 				}
 
@@ -448,6 +469,22 @@
 				if (Canvas.mouse.left && selectedTile.type === 0) {
 					addTile(selected.index.x, selected.index.y, 1);
 				}
+				const upKey = Canvas.keys.find(k => k.name === "up");
+				if (upKey.pressed) {
+					selectedTile.height += 0.25;
+					if (selectedTile.height > 5) selectedTile.height = 5;
+					Canvas.unrendered = true;
+					Canvas.options.heightToUse = selectedTile.height;
+					upKey.pressed = false;
+				}
+				const downKey = Canvas.keys.find(k => k.name === "down");
+				if (Canvas.keys.find(k => k.name === "down").pressed) {
+					selectedTile.height -= 0.25;
+					if (selectedTile.height < 0) selectedTile.height = 0;
+					Canvas.unrendered = true;
+					Canvas.options.heightToUse = selectedTile.height;
+					downKey.pressed = false;
+				}
 
 			} else if (Canvas.options.editMode === 2) {
 
@@ -459,6 +496,10 @@
 
 			}
 		}
+
+		// Draw buffer to canvas
+		ctx.drawImage(editGrid, 0, 0);
+		ctx.drawImage(buffer, 0, 0);
 
 		if (Canvas.frameCount % 4 === 0) Canvas.deltaElt.innerHTML = Math.floor((performance.now() - currentTime) * 10) / 10;
 		Canvas.frameCount++;
@@ -543,7 +584,7 @@
 	});
 
 	// Disallow right click context menu
-	window.addEventListener('contextmenu', e => {
+	canvas.addEventListener('contextmenu', e => {
 		e.preventDefault();
 	});
 
