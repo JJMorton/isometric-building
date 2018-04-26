@@ -29,7 +29,6 @@ canvas {
 	margin: 0;
 	padding: 2em;
 	left: 0px;
-	width: 7%;
 	background-color: none;
 }
 
@@ -47,7 +46,6 @@ canvas {
 }
 
 .tool {
-	width: calc(100% - 2em - 2px);
 	margin-bottom: 1em;
 	color: #212121;
 	background-color: #EEEEEE;
@@ -79,6 +77,7 @@ canvas {
 #paints-container {
 	bottom: 0px;
 	display: none;
+	width: 7%;
 }
 
 .paint {

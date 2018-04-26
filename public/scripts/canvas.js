@@ -1,6 +1,10 @@
+/* globals Canvas,Vector,io */
+
 (function() {
 
 	'use strict';
+
+	const socket = io();
 
 	/*
 		Set up canvas element and rendering context
@@ -216,7 +220,7 @@
 
 	};
 
-	const addTile = (x, y, type) => {
+	const addTile = (x, y, type, height, emit = false) => {
 
 		// Adds a tile to the grid and updates neighbour states
 
@@ -231,8 +235,13 @@
 			while (Canvas.grid[y].length <= x) Canvas.grid[y].push({type: -1, height: Math.random()});
 
 			Canvas.grid[y][x].type = type;
-			Canvas.grid[y][x].height = Canvas.options.heightToUse;
+			if (height) {
+				Canvas.grid[y][x].height = height;
+			} else {
+				Canvas.grid[y][x].height = Canvas.options.heightToUse;
+			}
 			Canvas.tileCount++;
+			if (emit) socket.emit('addtile', {x: x, y: y, type: type, height: Canvas.grid[y][x].height});
 
 			getNeighbours(x, y, true).forEach(t => {
 				if (Canvas.grid[t.y][t.x].type === -1) {
@@ -246,6 +255,7 @@
 			// Change tile texture
 
 			if (Canvas.grid[y][x].type > 0) Canvas.grid[y][x].type = type;
+			if (emit) socket.emit('updatetile', {x: x, y: y, type: type, height: Canvas.grid[y][x].height});
 
 		}
 
@@ -254,16 +264,18 @@
 
 	};
 
-	const removeTile = (x, y) => {
+	const removeTile = (x, y, emit = false) => {
 
 		// Removes a tile from the grid and updates neighbour states
 
 		// Can't remove an empty tile or the last one
-		if (Canvas.grid[y][x].type < 1 || Canvas.tileCount === 1) return;
+		// if (Canvas.grid[y][x].type < 1 || Canvas.tileCount === 1) return;
+		if (Canvas.grid[y][x].type < 1) return;
 
 		Canvas.grid[y][x].type = 0;
 		Canvas.unrendered = true;
 		Canvas.tileCount--;
+		if (emit) socket.emit('removetile', {x: x, y: y});
 
 		// Remove any trailing empty spaces from the row
 		const removeTrailing = y => {
@@ -298,16 +310,13 @@
 		removeTrailing(y);
 
 		// Remove empty rows from start and end
-		while (Canvas.grid[Canvas.grid.length - 1].every(x => x.type === -1)) Canvas.grid.pop();
-		while (Canvas.grid[0].every(x => x.type === -1)) {
+		while (Canvas.grid.length > 0 && Canvas.grid[Canvas.grid.length - 1].every(x => x.type === -1)) Canvas.grid.pop();
+		while (Canvas.grid.length > 0 && Canvas.grid[0].every(x => x.type === -1)) {
 			Canvas.grid.shift();
 			Canvas.options.offset.add(-1, 0.5);
 		}
 
 	};
-
-	// Add the first tile
-	addTile(0, 0, 1);
 
 
 
@@ -455,6 +464,7 @@
 					selectedTile.type++;
 					Canvas.unrendered = true;
 					if (selectedTile.type > Canvas.textures.length) selectedTile.type = 1;
+					socket.emit('updatetile', {x: selected.index.x, y: selected.index.y, type: selectedTile.type, height: selectedTile.height});
 				}
 
 			}
@@ -464,10 +474,10 @@
 				// Building actions
 
 				if (Canvas.mouse.right && selectedTile.type > 0) {
-					removeTile(selected.index.x, selected.index.y);
+					removeTile(selected.index.x, selected.index.y, true);
 				}
 				if (Canvas.mouse.left && selectedTile.type === 0) {
-					addTile(selected.index.x, selected.index.y, 1);
+					addTile(selected.index.x, selected.index.y, 1, null, true);
 				}
 				const upKey = Canvas.keys.find(k => k.name === "up");
 				if (upKey.pressed) {
@@ -476,6 +486,7 @@
 					Canvas.unrendered = true;
 					Canvas.options.heightToUse = selectedTile.height;
 					upKey.pressed = false;
+					socket.emit('updatetile', {x: selected.index.x, y: selected.index.y, type: selectedTile.type, height: selectedTile.height});
 				}
 				const downKey = Canvas.keys.find(k => k.name === "down");
 				if (Canvas.keys.find(k => k.name === "down").pressed) {
@@ -484,6 +495,7 @@
 					Canvas.unrendered = true;
 					Canvas.options.heightToUse = selectedTile.height;
 					downKey.pressed = false;
+					socket.emit('updatetile', {x: selected.index.x, y: selected.index.y, type: selectedTile.type, height: selectedTile.height});
 				}
 
 			} else if (Canvas.options.editMode === 2) {
@@ -491,7 +503,7 @@
 				// Painting actions
 
 				if (Canvas.mouse.left && selectedTile.type > 0) {
-					addTile(selected.index.x, selected.index.y, Canvas.options.textureToUse);
+					addTile(selected.index.x, selected.index.y, Canvas.options.textureToUse, null, true);
 				}
 
 			}
@@ -629,6 +641,39 @@
 		canvas.height = window.innerHeight;
 		buffer.width = canvas.width;
 		buffer.height = canvas.height;
+		editGrid.width = canvas.width;
+		editGrid.height = canvas.height;
+		Canvas.unrendered = true;
+	});
+
+
+
+	/*
+		SOCKET EVENTS
+	*/
+
+
+	socket.on('gamedata', data => {
+		Canvas.grid = data.grid;
+		Canvas.unrendered = true;
+	});
+
+	socket.on('addtile', data => {
+		// data = { x, y, type }
+		addTile(data.x, data.y, data.type, data.height);
+		Canvas.unrendered = true;
+	});
+
+	socket.on('removetile', data => {
+		// data = { x, y }
+		removeTile(data.x, data.y);
+		Canvas.unrendered = true;
+	});
+
+	socket.on('updatetile', data => {
+		// data = { x, y, type, height }
+		Canvas.grid[data.y][data.x].type = data.type;
+		Canvas.grid[data.y][data.x].height = data.height;
 		Canvas.unrendered = true;
 	});
 
