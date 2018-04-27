@@ -15,15 +15,15 @@ const dataSource = new EnmapLevel({dataDir: ".data", name: "griddata"});
 const gridData = new Enmap({provider: dataSource});
 
 dataSource.ready = () => {
-  console.log("Emmap Ready");
-  
-  // Initialise grid if haven't already
+	console.log("Emmap Ready");
+
+	// Initialise grid if haven't already
 	if (!gridData.has('grid') || gridData.get('grid').length === 0 || gridData.get('grid')[0].length === 0) {
-    gridData.set('grid', [[{type: 0, height: 0.5}]]);
-    console.log("Grid empty, initialising...");
-  }
-  
-  // Import data
+		gridData.set('grid', [[{type: 0, height: 0.5}]]);
+		console.log("Grid empty, initialising...");
+	}
+
+	// Import data
 	Game.grid = gridData.get('grid');
 };
 
