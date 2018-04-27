@@ -160,7 +160,7 @@
 		if (Canvas.frameCount % 4 === 0) Canvas.fpsElt.innerHTML = Math.floor(1000 / Canvas.delta);
 
 		// Either the height of the grid or the longest row
-		const gridSize = Math.max(Canvas.grid.length, Canvas.grid.map(x => x).sort((a, b) => b.length - a.length)[0].length);
+		const gridSize = Canvas.grid[0].length > 0 ? Math.max(Canvas.grid.length, Canvas.grid.map(x => x).sort((a, b) => b.length - a.length)[0].length) : 1;
 		// Smallest window dimension
 		const screenSize = Math.min(canvas.width, canvas.height);
 		// Size of each cell from top to bottom (double the width)
