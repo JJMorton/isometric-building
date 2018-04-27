@@ -8,11 +8,24 @@ app.use(express.static('public'));
 const io = require('socket.io')(server);
 const Enmap = require('enmap');
 const EnmapLevel = require('enmap-level');
-const GameLogic = require('./gamelogic');
+const GameLogic = require('./public/scripts/gamelogic');
 
 // Initialise persistent storage
 const dataSource = new EnmapLevel({dataDir: ".data", name: "griddata"});
 const gridData = new Enmap({provider: dataSource});
+
+dataSource.ready = () => {
+  console.log("Emmap Ready");
+  
+  // Initialise grid if haven't already
+	if (!gridData.has('grid') || gridData.get('grid').length === 0 || gridData.get('grid')[0].length === 0) {
+    gridData.set('grid', [[{type: 0, height: 0.5}]]);
+    console.log("Grid empty, initialising...");
+  }
+  
+  // Import data
+	Game.grid = gridData.get('grid');
+};
 
 const Game = {};
 Game.grid = [];
@@ -33,21 +46,17 @@ io.on('connection', client => {
 
 	console.log(`New connection with id ${client.id}`);
 
-	// Initialise grid if haven't already
-	if (!gridData.has('grid')) gridData.set('grid', [[{type: 0, height: 0.5}]]);
-	Game.grid = gridData.get('grid');
-
 	io.to(client.id).emit('gamedata', { grid: Game.grid });
 
 	client.on('addtile', data => {
 		client.broadcast.emit('addtile', data);
-		Game.grid = GameLogic.addTile(Game.grid, data.x, data.y, data.type, data.height);
+		Game.grid = GameLogic.addTile(Game, data.x, data.y, data.type, data.height);
 		Game.changed = true;
 	});
 
 	client.on('removetile', data => {
 		client.broadcast.emit('removetile', data);
-		Game.grid = GameLogic.removeTile(Game.grid, data.x, data.y);
+		Game.grid = GameLogic.removeTile(Game, data.x, data.y);
 		Game.changed = true;
 
 		// Make sure grid isn't empty

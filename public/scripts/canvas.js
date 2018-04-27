@@ -146,6 +146,7 @@
 
 	};
 
+/*
 	const getNeighbours = (x, y, createNonexistent = false) => {
 
 		// Returns coordinates of all four neighbours and can create neighbours if they don't exist
@@ -154,22 +155,22 @@
 
 		if (createNonexistent) {
 
-			// Tile above
+			// // Tile above
 
-			// If on the first row, create new row above
-			if (y === 0) {
-				Canvas.grid.splice(0, 0, [{type: -1, height: 0.5}]);
-				Canvas.unrendered = true;
-				// The original tile will now have a larger y coordinate
-				y++;
-				Canvas.options.offset.x += 1;
-				Canvas.options.offset.y -= 0.5;
-			}
-			// Fill all tiles up to the neighbour
-			while (Canvas.grid[y - 1].length <= x) {
-				Canvas.grid[y - 1].push({type: -1, height: 0.5});
-				Canvas.unrendered = true;
-			}
+			// // If on the first row, create new row above
+			// if (y === 0) {
+			// 	Canvas.grid.splice(0, 0, [{type: -1, height: 0.5}]);
+			// 	Canvas.unrendered = true;
+			// 	// The original tile will now have a larger y coordinate
+			// 	y++;
+			// 	Canvas.options.offset.x += 1;
+			// 	Canvas.options.offset.y -= 0.5;
+			// }
+			// // Fill all tiles up to the neighbour
+			// while (Canvas.grid[y - 1].length <= x) {
+			// 	Canvas.grid[y - 1].push({type: -1, height: 0.5});
+			// 	Canvas.unrendered = true;
+			// }
 
 
 			// Tile to the right
@@ -195,17 +196,17 @@
 			}
 
 
-			// Tile to the left
+			// // Tile to the left
 
-			// If at the beginning of a row, create column to the left
-			if (x === 0) {
-				Canvas.grid.forEach(row => row.splice(0, 0, {type: -1, height: 0.5}));
-				Canvas.unrendered = true;
-				// The original tile will have a larger x coordinate
-				x++;
-				Canvas.options.offset.x -= 1;
-				Canvas.options.offset.y -= 0.5;
-			}
+			// // If at the beginning of a row, create column to the left
+			// if (x === 0) {
+			// 	Canvas.grid.forEach(row => row.splice(0, 0, {type: -1, height: 0.5}));
+			// 	Canvas.unrendered = true;
+			// 	// The original tile will have a larger x coordinate
+			// 	x++;
+			// 	Canvas.options.offset.x -= 1;
+			// 	Canvas.options.offset.y -= 0.5;
+			// }
 
 		}
 
@@ -220,12 +221,12 @@
 
 	};
 
-	const addTile = (x, y, type, height, emit = false) => {
+	const addTile = (x, y, type, height = null, emit = false) => {
 
 		// Adds a tile to the grid and updates neighbour states
 
 		// Can't add tile if it's already there
-		if (Canvas.grid[y][x] && Canvas.grid[y][x].type === type) return;
+		if (y < 0 || y >= Canvas.grid.length || x < 0 || x >= Canvas.grid[y].length || Canvas.grid[y][x].type === type) return;
 
 		if (!Canvas.grid[y][x] || Canvas.grid[y][x].type <= 0) {
 
@@ -244,7 +245,8 @@
 			if (emit) socket.emit('addtile', {x: x, y: y, type: type, height: Canvas.grid[y][x].height});
 
 			getNeighbours(x, y, true).forEach(t => {
-				if (Canvas.grid[t.y][t.x].type === -1) {
+				// Ignore tiles out of bounds
+				if (t.y >= 0 && t.y < Canvas.grid.length && t.x >= 0 && t.x < Canvas.grid[t.y].length && Canvas.grid[t.y][t.x].type === -1) {
 					Canvas.grid[t.y][t.x].type = 0;
 					Canvas.unrendered = true;
 				}
@@ -268,9 +270,8 @@
 
 		// Removes a tile from the grid and updates neighbour states
 
-		// Can't remove an empty tile or the last one
-		// if (Canvas.grid[y][x].type < 1 || Canvas.tileCount === 1) return;
-		if (Canvas.grid[y][x].type < 1) return;
+		// Can't remove an empty or non-existent tile
+		if (y < 0 || y >= Canvas.grid.length || x < 0 || x >= Canvas.grid[y].length || Canvas.grid[y][x].type < 1) return;
 
 		Canvas.grid[y][x].type = 0;
 		Canvas.unrendered = true;
@@ -311,13 +312,13 @@
 
 		// Remove empty rows from start and end
 		while (Canvas.grid.length > 0 && Canvas.grid[Canvas.grid.length - 1].every(x => x.type === -1)) Canvas.grid.pop();
-		while (Canvas.grid.length > 0 && Canvas.grid[0].every(x => x.type === -1)) {
-			Canvas.grid.shift();
-			Canvas.options.offset.add(-1, 0.5);
-		}
+		// while (Canvas.grid.length > 0 && Canvas.grid[0].every(x => x.type === -1)) {
+		// 	Canvas.grid.shift();
+		// 	Canvas.options.offset.add(-1, 0.5);
+		// }
 
 	};
-
+*/
 
 
 	/*
@@ -371,6 +372,18 @@
 		if (Canvas.unrendered) {
 			bufferCtx.clearRect(0, 0, buffer.width, buffer.height);
 			editGridCtx.clearRect(0, 0, editGrid.width, editGrid.height);
+
+			// Draw edge of grid
+			const origin = Vector.toIsometric(0, 0).sub(0, tileSize / 2);
+			origin.set(0.5 * canvas.width + origin.x + Canvas.options.offset.x * tileSize, 0.5 * canvas.height + origin.y + Canvas.options.offset.y * tileSize);
+				bufferCtx.beginPath();
+				bufferCtx.moveTo(origin.x, origin.y);
+				bufferCtx.lineTo(-2*(canvas.height - origin.y) + origin.x, canvas.height);
+				bufferCtx.moveTo(origin.x, origin.y);
+				bufferCtx.lineTo(canvas.width, 0.5*(canvas.width - origin.x) + origin.y);
+				bufferCtx.closePath();
+				bufferCtx.strokeStyle = "#EEEEEE33";
+				bufferCtx.stroke();
 		}
 
 		Canvas.grid.forEach((row, y) => {
@@ -474,10 +487,10 @@
 				// Building actions
 
 				if (Canvas.mouse.right && selectedTile.type > 0) {
-					removeTile(selected.index.x, selected.index.y, true);
+					GameLogic.removeTile(Canvas, selected.index.x, selected.index.y, socket);
 				}
 				if (Canvas.mouse.left && selectedTile.type === 0) {
-					addTile(selected.index.x, selected.index.y, 1, null, true);
+					GameLogic.addTile(Canvas, selected.index.x, selected.index.y, 1, Canvas.options.heightToUse, socket);
 				}
 				const upKey = Canvas.keys.find(k => k.name === "up");
 				if (upKey.pressed) {
@@ -503,7 +516,7 @@
 				// Painting actions
 
 				if (Canvas.mouse.left && selectedTile.type > 0) {
-					addTile(selected.index.x, selected.index.y, Canvas.options.textureToUse, null, true);
+					GameLogic.addTile(Canvas, selected.index.x, selected.index.y, Canvas.options.textureToUse, Canvas.options.heightToUse, socket);
 				}
 
 			}
@@ -660,13 +673,13 @@
 
 	socket.on('addtile', data => {
 		// data = { x, y, type }
-		addTile(data.x, data.y, data.type, data.height);
+		GameLogic.addTile(Canvas, data.x, data.y, data.type, data.height);
 		Canvas.unrendered = true;
 	});
 
 	socket.on('removetile', data => {
 		// data = { x, y }
-		removeTile(data.x, data.y);
+		GameLogic.removeTile(Canvas, data.x, data.y);
 		Canvas.unrendered = true;
 	});
 
