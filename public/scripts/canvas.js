@@ -69,7 +69,9 @@
 			{ name: "a"   ,  code: 65, pressed: false },
 			{ name: "s"   ,  code: 83, pressed: false },
 			{ name: "d"   ,  code: 68, pressed: false },
-			{ name: "q"   ,  code: 81, pressed: false }
+			{ name: "q"   ,  code: 81, pressed: false },
+			{ name: "pgup", code: 33, pressed: false },
+			{ name: "pgdn", code: 34, pressed: false },
 		],
 
 		// Game data
@@ -145,6 +147,19 @@
 
 	};
 
+	const adjustZoom = amount => {
+		// Either the height of the grid or the longest row
+		const gridSize = Math.max(Canvas.grid.length, Canvas.grid.map(x => x).sort((a, b) => b.length - a.length)[0].length);
+		// Smallest window dimension
+		const screenSize = Math.min(canvas.width, canvas.height);
+		// Size of each cell from top to bottom (double the width)
+		const tileSize = Canvas.options.zoom * 100;
+
+		if (amount > 0 && Canvas.options.zoom * 100 > Math.min(canvas.width, canvas.height)) return;
+		Canvas.options.zoom += amount * Canvas.options.zoom;
+		Canvas.unrendered = true;
+	};
+
 
 	/*
 		ANIMATION LOOP
@@ -182,6 +197,12 @@
 		if (Canvas.keys.find(k => k.name === "d").pressed) {
 			Canvas.options.offset.x -= 0.02 * screenSize / tileSize;
 			Canvas.unrendered = true;
+		}
+		if (Canvas.keys.find(k => k.name === "pgup").pressed) {
+			adjustZoom(0.1);
+		}
+		if (Canvas.keys.find(k => k.name === "pgdn").pressed) {
+			adjustZoom(-0.1);
 		}
 
 		// Texture changing key state
@@ -445,21 +466,9 @@
 
 	// Zoom using mouse wheel
 	window.addEventListener('wheel', e => {
-
 		if (e.ctrlKey) e.preventDefault();
-
-		// Either the height of the grid or the longest row
-		const gridSize = Math.max(Canvas.grid.length, Canvas.grid.map(x => x).sort((a, b) => b.length - a.length)[0].length);
-		// Smallest window dimension
-		const screenSize = Math.min(canvas.width, canvas.height);
-		// Size of each cell from top to bottom (double the width)
-		const tileSize = Canvas.options.zoom * 100;
-
-		if (e.deltaY < 0 && Canvas.options.zoom * 100 > Math.min(canvas.width, canvas.height)) return;
-		const zoomAmount = e.deltaY * -0.0005 * Canvas.options.zoom;
-		Canvas.options.zoom += zoomAmount;
-		Canvas.unrendered = true;
-
+		const zoomAmount = e.deltaY * -0.005;
+		adjustZoom(zoomAmount);
 	});
 
 
